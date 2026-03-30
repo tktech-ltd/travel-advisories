@@ -2,7 +2,6 @@ name: Aggregate Travel Advisories
 
 on:
   schedule:
-    # Run every 6 hours
     - cron: '0 */6 * * *'
   workflow_dispatch:
 
@@ -12,7 +11,6 @@ permissions:
   id-token: write
 
 env:
-  # Force Node.js 24 for all actions to avoid deprecation
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 concurrency:
@@ -34,8 +32,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'   # Updated Node version
-          
+          node-version: '24'
+
       - name: Run aggregator
         run: node scripts/scraper.js
         env:
@@ -44,56 +42,33 @@ jobs:
       - name: Validate output
         run: |
           echo "=== Validating output files ==="
-          
           test -f data/travel-advisories.json || (echo "❌ Missing travel-advisories.json" && exit 1)
           test -f data/travel-advisories-index.json || (echo "❌ Missing index file" && exit 1)
           test -f data/travel-advisories-summary.csv || (echo "❌ Missing CSV file" && exit 1)
-          
-          node -e "
-            const data = JSON.parse(require('fs').readFileSync('data/travel-advisories.json', 'utf8'));
-            console.log('✅ JSON valid');
-            console.log('📊 Countries:', data.metadata.totalCountries);
-            if (data.metadata.totalCountries < 50) process.exit(1);
-          "
+          node -e "const data=JSON.parse(require('fs').readFileSync('data/travel-advisories.json','utf8')); console.log('✅ JSON valid'); if(data.metadata.totalCountries<50) process.exit(1)"
 
       - name: Generate diff report
         if: always()
         run: |
-          node -e "
-            const fs = require('fs');
-            const { execSync } = require('child_process');
-            let diff = '';
-            try {
-              diff = execSync('git diff --unified=0 data/travel-advisories-index.json 2>/dev/null || echo \"\"', { encoding:'utf8' });
-            } catch(e) {}
-            
-            const levelChanges = [];
-            let lastCountry = '';
-            diff.split('\n').forEach(line => {
-              if (line.includes('\"country\"')) {
-                const m = line.match(/\"country\":\\s*\"([^\"]+)\"/);
-                if (m) lastCountry = m[1];
-              }
-              if (line.startsWith('+') && line.includes('\"maxRiskLevel\"')) {
-                const m = line.match(/\"maxRiskLevel\":\\s*(\\d+)/);
-                if (m && lastCountry) levelChanges.push({ country: lastCountry, newLevel: parseInt(m[1]) });
-              }
-            });
-            
-            if (levelChanges.length > 0) {
-              console.log('⚠️ Risk level changes detected:');
-              levelChanges.forEach(c => console.log(`  - ${c.country}: → Level ${c.newLevel}`));
-              let summary = '## 🌍 Travel Advisory Changes\\n\\n';
-              summary += '| Country | New Level |\\n|---------|-----------|\\n';
-              levelChanges.forEach(c => {
-                const emoji = ['⚪','🟢','🟡','🟠','🔴'][c.newLevel] || '⚪';
-                summary += `| ${c.country} | ${emoji} Level ${c.newLevel} |\\n`;
-              });
-              fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY || '/dev/null', summary);
-            } else {
-              console.log('No risk level changes detected');
-            }
-          "
+          node <<'EOF'
+          const fs = require('fs');
+          const { execSync } = require('child_process');
+          let diff = '';
+          try { diff = execSync('git diff --unified=0 data/travel-advisories-index.json 2>/dev/null || echo ""', { encoding:'utf8' }); } catch(e) {}
+          const levelChanges = [];
+          let lastCountry = '';
+          diff.split('\n').forEach(line => {
+            if(line.includes('"country"')) { const m=line.match(/"country":\s*"([^"]+)"/); if(m) lastCountry=m[1]; }
+            if(line.startsWith('+') && line.includes('"maxRiskLevel"')) { const m=line.match(/"maxRiskLevel":\s*(\d+)/); if(m && lastCountry) levelChanges.push({country:lastCountry,newLevel:parseInt(m[1])}); }
+          });
+          if(levelChanges.length>0){
+            console.log('⚠️ Risk level changes detected:');
+            levelChanges.forEach(c=>console.log(`  - ${c.country}: → Level ${c.newLevel}`));
+            let summary='## 🌍 Travel Advisory Changes\n\n| Country | New Level |\n|---------|-----------|\n';
+            levelChanges.forEach(c=>{const emoji=['⚪','🟢','🟡','🟠','🔴'][c.newLevel]||'⚪'; summary+=`| ${c.country} | ${emoji} Level ${c.newLevel} |\n`;});
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY||'/dev/null',summary);
+          } else { console.log('No risk level changes detected'); }
+          EOF
 
       - name: Commit & push data
         run: |
@@ -108,64 +83,22 @@ jobs:
             git commit -m "chore(data): update travel advisories [$TIMESTAMP] - $COUNTRIES countries"
             git push
             echo "✅ Data committed and pushed"
-          fi
 
   deploy-dashboard:
-    name: Deploy Dashboard to GitHub Pages
+    name: Deploy Dashboard
     needs: aggregate
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref=='refs/heads/main'
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: main
-
       - name: Setup Pages
         uses: actions/configure-pages@v4
-
       - name: Upload dashboard artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: dashboard/
-
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
-  notify:
-    name: Notify Level 4 Changes
-    needs: aggregate
-    runs-on: ubuntu-latest
-    if: always()
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-
-      - name: Check for Level 4 changes
-        id: check
-        run: |
-          node -e "
-            const { execSync } = require('child_process');
-            const fs = require('fs');
-            let diff = '';
-            try { diff = execSync('git diff HEAD~1 HEAD -- data/travel-advisories-index.json 2>/dev/null', {encoding:'utf8'}); } catch(e) {}
-            const level4Changes = [];
-            let lastCountry = '';
-            diff.split('\n').forEach(line => {
-              if (line.includes('\"country\"')) {
-                const m = line.match(/\"country\":\\s*\"([^\"]+)\"/);
-                if (m) lastCountry = m[1];
-              }
-              if (line.startsWith('+') && line.includes('\"maxRiskLevel\": 4')) {
-                if (lastCountry) level4Changes.push(lastCountry);
-              }
-            });
-            if (level4Changes.length > 0) {
-              fs.appendFileSync(process.env.GITHUB_OUTPUT || '/dev/null', 'has_level4=true\ncountries=' + level4Changes.join(',') + '\\n');
-            }
-          "

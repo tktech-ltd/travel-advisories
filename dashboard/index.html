@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Global Travel Advisories</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a26;
+    --border: rgba(255,255,255,0.07);
+    --text: #e8e8f0;
+    --text-muted: #5a5a78;
+    --text-dim: #3a3a55;
+    --accent: #7c6fff;
+    --accent2: #ff6b9d;
+
+    --l1: #22c55e;
+    --l2: #f59e0b;
+    --l3: #f97316;
+    --l4: #ef4444;
+    --l0: #4a4a6a;
+
+    --mono: 'Space Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 20% 10%, rgba(124,111,255,0.06) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 80%, rgba(255,107,157,0.05) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Header ─────────────────────────────────────────────────────────────── */
+  header {
+    position: relative;
+    z-index: 10;
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    background: rgba(10,10,15,0.9);
+    backdrop-filter: blur(20px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+    position: sticky;
+    top: 0;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-mark {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+
+  .logo-text {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+
+  .header-meta {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .pulse-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--l1);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  /* ── Stats Bar ─────────────────────────────────────────────────────────── */
+  .stats-bar {
+    position: relative;
+    z-index: 5;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .stat-cell {
+    padding: 18px 24px;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .stat-cell:last-child { border-right: none; }
+
+  .stat-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+  }
+
+  .stat-value {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1;
+  }
+
+  .stat-sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+
+  /* ── Layout ─────────────────────────────────────────────────────────────── */
+  .layout {
+    position: relative;
+    z-index: 5;
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    height: calc(100vh - 112px);
+    overflow: hidden;
+  }
+
+  /* ── Sidebar ─────────────────────────────────────────────────────────────── */
+  .sidebar {
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--surface);
+  }
+
+  .sidebar-filters {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .search-wrap {
+    position: relative;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 14px;
+    pointer-events: none;
+  }
+
+  input[type="text"] {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px 10px 36px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  input[type="text"]:focus { border-color: var(--accent); }
+  input[type="text"]::placeholder { color: var(--text-dim); }
+
+  .filter-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .filter-btn {
+    padding: 5px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    font-family: var(--mono);
+    font-size: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .filter-btn:hover { border-color: rgba(255,255,255,0.2); color: var(--text); }
+
+  .filter-btn[data-level="1"].active { border-color: var(--l1); color: var(--l1); background: rgba(34,197,94,0.1); }
+  .filter-btn[data-level="2"].active { border-color: var(--l2); color: var(--l2); background: rgba(245,158,11,0.1); }
+  .filter-btn[data-level="3"].active { border-color: var(--l3); color: var(--l3); background: rgba(249,115,22,0.1); }
+  .filter-btn[data-level="4"].active { border-color: var(--l4); color: var(--l4); background: rgba(239,68,68,0.1); }
+  .filter-btn[data-level="all"].active { border-color: var(--accent); color: var(--accent); background: rgba(124,111,255,0.1); }
+
+  .source-filters {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .source-btn {
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    font-family: var(--mono);
+    font-size: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .source-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(124,111,255,0.1);
+  }
+
+  /* ── Country List ─────────────────────────────────────────────────────── */
+  .country-list {
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .country-list::-webkit-scrollbar { width: 4px; }
+  .country-list::-webkit-scrollbar-track { background: transparent; }
+  .country-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .country-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    gap: 12px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    transition: background 0.15s;
+    position: relative;
+  }
+
+  .country-item:hover { background: rgba(255,255,255,0.03); }
+  .country-item.selected { background: rgba(124,111,255,0.08); }
+
+  .country-item.selected::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--accent);
+  }
+
+  .risk-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    position: relative;
+  }
+
+  .risk-indicator.level-4::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    border: 1px solid var(--l4);
+    animation: ring 2s infinite;
+    opacity: 0;
+  }
+
+  @keyframes ring {
+    0% { opacity: 0.8; transform: scale(0.8); }
+    100% { opacity: 0; transform: scale(2); }
+  }
+
+  .country-name {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .country-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .source-dots {
+    display: flex;
+    gap: 3px;
+  }
+
+  .source-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--text-dim);
+  }
+
+  .source-dot.has-data { background: var(--accent); opacity: 0.6; }
+
+  .regional-badge {
+    font-family: var(--mono);
+    font-size: 8px;
+    padding: 2px 5px;
+    border-radius: 3px;
+    background: rgba(245,158,11,0.15);
+    color: var(--l2);
+    border: 1px solid rgba(245,158,11,0.3);
+  }
+
+  /* ── Detail Panel ─────────────────────────────────────────────────────── */
+  .detail-panel {
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+    background: var(--bg);
+  }
+
+  .detail-panel::-webkit-scrollbar { width: 4px; }
+  .detail-panel::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .detail-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 16px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+
+  .detail-empty-icon {
+    font-size: 48px;
+    opacity: 0.3;
+  }
+
+  .detail-content {
+    padding: 32px;
+    max-width: 900px;
+  }
+
+  .detail-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .detail-country-name {
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1.1;
+  }
+
+  .detail-geo {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 6px;
+  }
+
+  .detail-risk-badge {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 14px;
+    flex-shrink: 0;
+    margin-left: 24px;
+  }
+
+  .detail-risk-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+
+  /* ── Source Cards ─────────────────────────────────────────────────────── */
+  .sources-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .source-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: border-color 0.2s;
+  }
+
+  .source-card:hover { border-color: rgba(255,255,255,0.12); }
+
+  .source-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .source-flag-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .source-flag {
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  .source-risk-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  .source-risk-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+
+  .source-card-text {
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-muted);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .source-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+
+  .source-link {
+    color: var(--accent);
+    text-decoration: none;
+    font-family: var(--mono);
+    font-size: 10px;
+    opacity: 0.8;
+    transition: opacity 0.15s;
+  }
+
+  .source-link:hover { opacity: 1; }
+
+  /* ── No-data card ─────────────────────────────────────────────────────── */
+  .source-card.no-data {
+    opacity: 0.35;
+    border-style: dashed;
+  }
+
+  .no-data-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    text-align: center;
+    padding: 12px;
+  }
+
+  /* ── Consensus Section ────────────────────────────────────────────────── */
+  .consensus-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 24px;
+  }
+
+  .section-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+  }
+
+  .consensus-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .consensus-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .consensus-source {
+    font-size: 12px;
+    font-weight: 500;
+    width: 80px;
+    flex-shrink: 0;
+  }
+
+  .consensus-bar-wrap {
+    flex: 1;
+    height: 20px;
+    background: var(--surface2);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .consensus-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    padding-left: 8px;
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 700;
+    color: rgba(0,0,0,0.8);
+    transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    min-width: 0;
+  }
+
+  .consensus-na {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    font-style: italic;
+  }
+
+  /* ── Updates section ──────────────────────────────────────────────────── */
+  .updates-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+
+  .update-item {
+    display: flex;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  .update-item:last-child { border-bottom: none; }
+
+  .update-source-badge {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 700;
+    flex-shrink: 0;
+    height: fit-content;
+    margin-top: 2px;
+  }
+
+  /* ── Loading / Error ─────────────────────────────────────────────────── */
+  .loading-screen {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    z-index: 100;
+    transition: opacity 0.4s, visibility 0.4s;
+  }
+
+  .loading-screen.hidden { opacity: 0; visibility: hidden; }
+
+  .loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-text {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  /* ── Responsive ─────────────────────────────────────────────────────── */
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { height: 50vh; }
+    .sources-grid { grid-template-columns: 1fr; }
+    .stats-bar { grid-template-columns: repeat(3, 1fr); }
+    .detail-header { flex-direction: column; gap: 16px; }
+    .detail-risk-badge { margin-left: 0; }
+  }
+
+  /* ── Scrollbar fix ───────────────────────────────────────────────────── */
+  .country-list-count {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+</style>
+</head>
+<body>
+
+<div class="loading-screen" id="loadingScreen">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Fetching global travel advisories...</div>
+</div>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">🌍</div>
+    <div class="logo-text">Global Travel Advisories</div>
+  </div>
+  <div class="header-meta">
+    <div class="pulse-dot"></div>
+    <span id="headerUpdated">Loading...</span>
+    <span>·</span>
+    <span>4 Gov. Sources</span>
+  </div>
+</header>
+
+<div class="stats-bar" id="statsBar">
+  <div class="stat-cell">
+    <span class="stat-label">Countries</span>
+    <span class="stat-value" id="statTotal">—</span>
+    <span class="stat-sub">tracked</span>
+  </div>
+  <div class="stat-cell">
+    <span class="stat-label">Do Not Travel</span>
+    <span class="stat-value" style="color:var(--l4)" id="statL4">—</span>
+    <span class="stat-sub">Level 4</span>
+  </div>
+  <div class="stat-cell">
+    <span class="stat-label">Reconsider</span>
+    <span class="stat-value" style="color:var(--l3)" id="statL3">—</span>
+    <span class="stat-sub">Level 3</span>
+  </div>
+  <div class="stat-cell">
+    <span class="stat-label">Increased Caution</span>
+    <span class="stat-value" style="color:var(--l2)" id="statL2">—</span>
+    <span class="stat-sub">Level 2</span>
+  </div>
+  <div class="stat-cell">
+    <span class="stat-label">Normal Precautions</span>
+    <span class="stat-value" style="color:var(--l1)" id="statL1">—</span>
+    <span class="stat-sub">Level 1</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-filters">
+      <div class="search-wrap">
+        <span class="search-icon">⌕</span>
+        <input type="text" id="searchInput" placeholder="Search countries...">
+      </div>
+
+      <div class="filter-row" id="riskFilters">
+        <button class="filter-btn active" data-level="all">All</button>
+        <button class="filter-btn" data-level="4">🔴 Level 4</button>
+        <button class="filter-btn" data-level="3">🟠 Level 3</button>
+        <button class="filter-btn" data-level="2">🟡 Level 2</button>
+        <button class="filter-btn" data-level="1">🟢 Level 1</button>
+      </div>
+
+      <div class="source-filters" id="sourceFilters">
+        <button class="source-btn active" data-src="all">All sources</button>
+        <button class="source-btn" data-src="Canada">🇨🇦 CA</button>
+        <button class="source-btn" data-src="UK">🇬🇧 UK</button>
+        <button class="source-btn" data-src="USA">🇺🇸 US</button>
+        <button class="source-btn" data-src="Australia">🇦🇺 AU</button>
+      </div>
+    </div>
+
+    <div class="country-list-count" id="listCount">Loading...</div>
+
+    <div class="country-list" id="countryList"></div>
+  </aside>
+
+  <main class="detail-panel" id="detailPanel">
+    <div class="detail-empty">
+      <div class="detail-empty-icon">🗺</div>
+      <div>Select a country to view advisory details</div>
+    </div>
+  </main>
+</div>
+
+<script>
+const DATA_URL = '../data/travel-advisories-index.json';
+const FULL_DATA_URL = '../data/travel-advisories.json';
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let allAdvisories = [];
+let filteredAdvisories = [];
+let selectedId = null;
+let activeLevel = 'all';
+let activeSource = 'all';
+let fullData = null;
+
+const LEVEL_COLORS = { 0: 'var(--l0)', 1: 'var(--l1)', 2: 'var(--l2)', 3: 'var(--l3)', 4: 'var(--l4)' };
+const LEVEL_BG = {
+  0: 'rgba(74,74,106,0.15)',
+  1: 'rgba(34,197,94,0.12)',
+  2: 'rgba(245,158,11,0.12)',
+  3: 'rgba(249,115,22,0.12)',
+  4: 'rgba(239,68,68,0.12)'
+};
+const SOURCE_FLAGS = { Canada: '🇨🇦', UK: '🇬🇧', USA: '🇺🇸', Australia: '🇦🇺' };
+const SOURCE_COLORS = {
+  Canada: '#d62828',
+  UK: '#003399',
+  USA: '#002868',
+  Australia: '#00008b'
+};
+
+// ── Bootstrap ─────────────────────────────────────────────────────────────────
+async function init() {
+  try {
+    // Load index first (fast)
+    const [indexRes, fullRes] = await Promise.all([
+      fetch(DATA_URL),
+      fetch(FULL_DATA_URL),
+    ]);
+
+    const index = await indexRes.json();
+    fullData = await fullRes.json();
+
+    allAdvisories = index.advisories || fullData.advisories || [];
+    filteredAdvisories = [...allAdvisories];
+
+    updateStats(index.metadata || fullData.metadata);
+    renderList();
+    attachFilters();
+
+    document.getElementById('headerUpdated').textContent =
+      'Updated ' + fmtDate(index.metadata?.generatedAt || fullData.metadata?.generatedAt);
+
+    document.getElementById('loadingScreen').classList.add('hidden');
+  } catch (err) {
+    // Try direct full data if index fails
+    try {
+      const res = await fetch(FULL_DATA_URL);
+      fullData = await res.json();
+      allAdvisories = fullData.advisories || [];
+      filteredAdvisories = [...allAdvisories];
+      updateStats(fullData.metadata);
+      renderList();
+      attachFilters();
+      document.getElementById('loadingScreen').classList.add('hidden');
+    } catch (e) {
+      document.getElementById('loadingScreen').innerHTML =
+        `<div style="color:var(--l4);font-family:var(--mono);font-size:13px">
+          Failed to load data.<br><small>Run the GitHub Actions workflow first.</small>
+        </div>`;
+    }
+  }
+}
+
+function updateStats(meta) {
+  if (!meta) return;
+  const d = meta.riskDistribution || {};
+  document.getElementById('statTotal').textContent = (meta.totalCountries || allAdvisories.length).toLocaleString();
+  document.getElementById('statL4').textContent = (d.level4DoNotTravel || 0).toLocaleString();
+  document.getElementById('statL3').textContent = (d.level3Reconsider || 0).toLocaleString();
+  document.getElementById('statL2').textContent = (d.level2Caution || 0).toLocaleString();
+  document.getElementById('statL1').textContent = (d.level1Normal || 0).toLocaleString();
+}
+
+// ── List Rendering ─────────────────────────────────────────────────────────────
+function renderList() {
+  const list = document.getElementById('countryList');
+  const sources = ['Canada', 'UK', 'USA', 'Australia'];
+
+  list.innerHTML = filteredAdvisories.map(c => `
+    <div class="country-item ${c.id === selectedId ? 'selected' : ''}"
+         data-id="${c.id}" onclick="selectCountry('${c.id}')">
+      <div class="risk-indicator level-${c.maxRiskLevel}"
+           style="background:${LEVEL_COLORS[c.maxRiskLevel] || LEVEL_COLORS[0]}"></div>
+      <div class="country-name">${c.country}</div>
+      <div class="country-meta">
+        ${c.hasRegionalAdvisory ? '<span class="regional-badge">PARTIAL</span>' : ''}
+        <div class="source-dots">
+          ${sources.map(s => `<div class="source-dot ${c.sourceLevels?.[s] !== undefined ? 'has-data' : ''}"></div>`).join('')}
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  document.getElementById('listCount').textContent =
+    `${filteredAdvisories.length.toLocaleString()} of ${allAdvisories.length.toLocaleString()} countries`;
+}
+
+// ── Detail Panel ───────────────────────────────────────────────────────────────
+function selectCountry(id) {
+  selectedId = id;
+
+  // Update sidebar selection
+  document.querySelectorAll('.country-item').forEach(el => {
+    el.classList.toggle('selected', el.dataset.id === id);
+  });
+
+  // Find full data
+  const advisory = (fullData?.advisories || allAdvisories).find(c => c.id === id);
+  if (!advisory) return;
+
+  const panel = document.getElementById('detailPanel');
+  const sources = ['Canada', 'UK', 'USA', 'Australia'];
+  const levelColor = LEVEL_COLORS[advisory.maxRiskLevel] || LEVEL_COLORS[0];
+  const levelBg = LEVEL_BG[advisory.maxRiskLevel] || LEVEL_BG[0];
+
+  // Gather recent updates
+  const updates = sources
+    .filter(s => advisory.sources?.[s]?.recentUpdates)
+    .map(s => ({ source: s, text: advisory.sources[s].recentUpdates, updatedAt: advisory.sources[s].updatedAt }));
+
+  panel.innerHTML = `
+    <div class="detail-content">
+      <div class="detail-header">
+        <div>
+          <div class="detail-country-name">${advisory.country}</div>
+          <div class="detail-geo">
+            ${advisory.iso2 ? `<strong>${advisory.iso2}</strong> · ` : ''}
+            ${advisory.geoGroup || 'International'}
+          </div>
+        </div>
+        <div class="detail-risk-badge" style="background:${levelBg};border:1px solid ${levelColor}30;">
+          <div class="detail-risk-dot" style="background:${levelColor}"></div>
+          <span style="color:${levelColor}">Level ${advisory.maxRiskLevel}</span>
+          <span style="color:var(--text-muted);font-size:12px;font-weight:400">
+            ${advisory.maxRiskLabel || ''}
+          </span>
+        </div>
+      </div>
+
+      <div class="consensus-section">
+        <div class="section-title">Risk Level by Source</div>
+        <div class="consensus-bars">
+          ${sources.map(s => {
+            const sd = advisory.sources?.[s];
+            const lvl = sd?.riskLevel ?? null;
+            const pct = lvl !== null ? (lvl / 4) * 100 : 0;
+            const color = LEVEL_COLORS[lvl] || LEVEL_COLORS[0];
+            return `
+              <div class="consensus-row">
+                <div class="consensus-source">${SOURCE_FLAGS[s] || ''} ${s}</div>
+                ${lvl !== null ? `
+                  <div class="consensus-bar-wrap">
+                    <div class="consensus-bar-fill" style="width:${pct}%;background:${color}">
+                      ${pct > 15 ? `L${lvl}` : ''}
+                    </div>
+                  </div>
+                  <a href="${sd.sourceUrl || '#'}" target="_blank" class="source-link">↗</a>
+                ` : `<span class="consensus-na">No advisory</span>`}
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+
+      <div class="sources-grid">
+        ${sources.map(s => {
+          const sd = advisory.sources?.[s];
+          if (!sd) return `
+            <div class="source-card no-data">
+              <div class="source-card-header">
+                <div class="source-flag-name">
+                  <span class="source-flag">${SOURCE_FLAGS[s]}</span>
+                  <span>${s}</span>
+                </div>
+              </div>
+              <div class="no-data-label">No advisory issued</div>
+            </div>
+          `;
+
+          const lc = LEVEL_COLORS[sd.riskLevel] || LEVEL_COLORS[0];
+          const lb = LEVEL_BG[sd.riskLevel] || LEVEL_BG[0];
+          return `
+            <div class="source-card">
+              <div class="source-card-header">
+                <div class="source-flag-name">
+                  <span class="source-flag">${SOURCE_FLAGS[s]}</span>
+                  <span>${s}</span>
+                </div>
+                <div class="source-risk-pill" style="background:${lb};border:1px solid ${lc}30">
+                  <div class="source-risk-dot" style="background:${lc}"></div>
+                  <span style="color:${lc}">Level ${sd.riskLevel}</span>
+                </div>
+              </div>
+              ${sd.advisoryText ? `<div class="source-card-text">${sd.advisoryText}</div>` : ''}
+              <div class="source-card-footer">
+                <span>${sd.friendlyDate || fmtDate(sd.updatedAt)}</span>
+                ${sd.sourceUrl ? `<a href="${sd.sourceUrl}" target="_blank" class="source-link">View full advisory ↗</a>` : ''}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+
+      ${updates.length > 0 ? `
+        <div class="updates-section">
+          <div class="section-title">Recent Updates</div>
+          ${updates.map(u => `
+            <div class="update-item">
+              <span class="update-source-badge" style="background:rgba(124,111,255,0.1);color:var(--accent)">
+                ${SOURCE_FLAGS[u.source]} ${u.source}
+              </span>
+              <div>
+                <div>${u.text}</div>
+                <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:4px">
+                  ${fmtDate(u.updatedAt)}
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+
+      <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+        <span style="font-family:var(--mono);font-size:10px;color:var(--text-dim)">
+          ${advisory.sourceCount} source${advisory.sourceCount !== 1 ? 's' : ''} ·
+          Last updated ${fmtDate(advisory.lastUpdated)}
+        </span>
+        ${advisory.hasRegionalAdvisory ? `
+          <span style="font-family:var(--mono);font-size:10px;padding:3px 10px;border-radius:4px;background:rgba(245,158,11,0.1);color:var(--l2);border:1px solid rgba(245,158,11,0.3)">
+            ⚠ Regional advisory applies
+          </span>
+        ` : ''}
+      </div>
+    </div>
+  `;
+
+  // Animate bars in
+  setTimeout(() => {
+    document.querySelectorAll('.consensus-bar-fill').forEach(el => {
+      const w = el.style.width;
+      el.style.width = '0';
+      requestAnimationFrame(() => { el.style.width = w; });
+    });
+  }, 50);
+}
+
+// ── Filters ────────────────────────────────────────────────────────────────────
+function attachFilters() {
+  // Risk level filters
+  document.getElementById('riskFilters').addEventListener('click', e => {
+    const btn = e.target.closest('.filter-btn');
+    if (!btn) return;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeLevel = btn.dataset.level;
+    applyFilters();
+  });
+
+  // Source filters
+  document.getElementById('sourceFilters').addEventListener('click', e => {
+    const btn = e.target.closest('.source-btn');
+    if (!btn) return;
+    document.querySelectorAll('.source-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeSource = btn.dataset.src;
+    applyFilters();
+  });
+
+  // Search
+  document.getElementById('searchInput').addEventListener('input', applyFilters);
+}
+
+function applyFilters() {
+  const query = document.getElementById('searchInput').value.toLowerCase().trim();
+
+  filteredAdvisories = allAdvisories.filter(c => {
+    const levelMatch = activeLevel === 'all' || c.maxRiskLevel === parseInt(activeLevel);
+    const sourceMatch = activeSource === 'all' || c.sourceLevels?.[activeSource] !== undefined;
+    const searchMatch = !query || c.country.toLowerCase().includes(query) || c.iso2?.toLowerCase().includes(query);
+    return levelMatch && sourceMatch && searchMatch;
+  });
+
+  renderList();
+}
+
+// ── Utilities ──────────────────────────────────────────────────────────────────
+function fmtDate(iso) {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch { return iso; }
+}
+
+// ── Start ─────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>

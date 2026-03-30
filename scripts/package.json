@@ -1,0 +1,15 @@
+{
+  "name": "travel-advisory-scraper",
+  "version": "2.0.0",
+  "description": "Aggregates travel advisories from 4 government sources",
+  "type": "module",
+  "main": "scraper.js",
+  "scripts": {
+    "scrape": "node scraper.js",
+    "scrape:debug": "DEBUG=1 node scraper.js"
+  },
+  "dependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

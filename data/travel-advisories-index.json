@@ -1,0 +1,14 @@
+{
+  "metadata": {
+    "generatedAt": "2026-03-30T05:45:02.888Z",
+    "note": "SAMPLE DATA — run full GitHub Action for all countries",
+    "totalCountries": 0,
+    "riskDistribution": {
+      "level4DoNotTravel": 0,
+      "level3Reconsider": 0,
+      "level2Caution": 0,
+      "level1Normal": 0
+    }
+  },
+  "advisories": []
+}

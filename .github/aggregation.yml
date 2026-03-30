@@ -1,0 +1,222 @@
+name: Aggregate Travel Advisories
+
+on:
+  schedule:
+    # Run every 6 hours
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      force_full_refresh:
+        description: 'Force full data refresh (ignore cache)'
+        required: false
+        default: 'false'
+        type: boolean
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: travel-advisory-aggregation
+  cancel-in-progress: false
+
+jobs:
+  aggregate:
+    name: Fetch & Consolidate Advisories
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: scripts/package.json
+
+      - name: Install dependencies
+        working-directory: scripts
+        run: npm ci
+
+      - name: Run aggregator
+        run: node scripts/scraper.js
+        env:
+          NODE_OPTIONS: '--max-old-space-size=4096'
+
+      - name: Validate output
+        run: |
+          echo "=== Validating output files ==="
+          
+          # Check files exist
+          test -f data/travel-advisories.json || (echo "❌ Missing travel-advisories.json" && exit 1)
+          test -f data/travel-advisories-index.json || (echo "❌ Missing index file" && exit 1)
+          test -f data/travel-advisories-summary.csv || (echo "❌ Missing CSV file" && exit 1)
+          
+          # Validate JSON
+          node -e "
+            const data = JSON.parse(require('fs').readFileSync('data/travel-advisories.json', 'utf8'));
+            const index = JSON.parse(require('fs').readFileSync('data/travel-advisories-index.json', 'utf8'));
+            
+            console.log('✅ JSON valid');
+            console.log('📊 Countries:', data.metadata.totalCountries);
+            console.log('🌏 Sources:', JSON.stringify(Object.fromEntries(
+              Object.entries(data.metadata.sources).map(([k, v]) => [k, v.count])
+            )));
+            console.log('🔴 Level 4 (Do Not Travel):', data.metadata.riskDistribution.level4DoNotTravel);
+            console.log('🟠 Level 3 (Reconsider):', data.metadata.riskDistribution.level3Reconsider);
+            console.log('🟡 Level 2 (Caution):', data.metadata.riskDistribution.level2Caution);
+            console.log('🟢 Level 1 (Normal):', data.metadata.riskDistribution.level1Normal);
+            
+            if (data.metadata.totalCountries < 50) {
+              console.error('❌ Too few countries - possible scraping failure');
+              process.exit(1);
+            }
+            console.log('✅ Validation passed');
+          "
+
+      - name: Generate diff report
+        if: always()
+        run: |
+          node -e "
+            const { execSync } = require('child_process');
+            const fs = require('fs');
+            
+            try {
+              const diff = execSync('git diff --unified=0 data/travel-advisories-index.json 2>/dev/null || echo \"No previous data\"', { encoding: 'utf8' });
+              
+              // Parse changed advisories
+              const levelChanges = [];
+              const lines = diff.split('\n');
+              const countryContext = {};
+              
+              for (const line of lines) {
+                if (line.includes('"country"')) {
+                  const m = line.match(/"country":\s*"([^"]+)"/);
+                  if (m) countryContext.last = m[1];
+                }
+                if (line.startsWith('+') && line.includes('"maxRiskLevel"') && !line.startsWith('+++')) {
+                  const m = line.match(/"maxRiskLevel":\s*(\d+)/);
+                  if (m && countryContext.last) {
+                    levelChanges.push({ country: countryContext.last, newLevel: parseInt(m[1]) });
+                  }
+                }
+              }
+              
+              if (levelChanges.length > 0) {
+                console.log('⚠️ Risk level changes detected:');
+                levelChanges.forEach(c => console.log(\`  - \${c.country}: → Level \${c.newLevel}\`));
+                
+                // Write to GitHub step summary
+                let summary = '## 🌍 Travel Advisory Changes\\n\\n';
+                summary += \`| Country | New Level |\\n|---------|-----------|\\n\`;
+                levelChanges.forEach(c => {
+                  const emoji = ['⚪', '🟢', '🟡', '🟠', '🔴'][c.newLevel] || '⚪';
+                  summary += \`| \${c.country} | \${emoji} Level \${c.newLevel} |\\n\`;
+                });
+                fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY || '/dev/null', summary);
+              } else {
+                console.log('No risk level changes detected');
+              }
+            } catch(e) {
+              console.log('Diff check skipped:', e.message);
+            }
+          "
+
+      - name: Commit & push data
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "Travel Advisory Bot"
+          
+          git add data/
+          
+          if git diff --staged --quiet; then
+            echo "📭 No changes to commit"
+          else
+            TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
+            COUNTRIES=$(node -e "console.log(JSON.parse(require('fs').readFileSync('data/travel-advisories.json','utf8')).metadata.totalCountries)")
+            git commit -m "chore(data): update travel advisories [$TIMESTAMP] - $COUNTRIES countries"
+            git push
+            echo "✅ Data committed and pushed"
+          fi
+
+  # ── Deploy Dashboard ────────────────────────────────────────────────────────
+
+  deploy-dashboard:
+    name: Deploy Dashboard to GitHub Pages
+    needs: aggregate
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main # Get latest with committed data
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload dashboard artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dashboard/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  # ── Notify on High-Risk Changes ─────────────────────────────────────────────
+
+  notify:
+    name: Notify Level 4 Changes
+    needs: aggregate
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # Need previous commit for diff
+
+      - name: Check for Level 4 changes
+        id: check
+        run: |
+          node -e "
+            const { execSync } = require('child_process');
+            const diff = execSync('git diff HEAD~1 HEAD -- data/travel-advisories-index.json 2>/dev/null || echo \"\"', {encoding:'utf8'});
+            
+            const level4Changes = [];
+            const lines = diff.split('\n');
+            let lastCountry = '';
+            
+            for (const line of lines) {
+              if (line.includes('\"country\"')) {
+                const m = line.match(/\"country\":\s*\"([^\"]+)\"/);
+                if (m) lastCountry = m[1];
+              }
+              if (line.startsWith('+') && line.includes('\"maxRiskLevel\": 4') && !line.startsWith('+++')) {
+                if (lastCountry) level4Changes.push(lastCountry);
+              }
+            }
+            
+            if (level4Changes.length > 0) {
+              console.log('LEVEL4_CHANGES=' + level4Changes.join(','));
+              require('fs').appendFileSync(process.env.GITHUB_OUTPUT || '/dev/null', 
+                'has_level4=true\ncountries=' + level4Changes.join(',') + '\n');
+            }
+          " 2>/dev/null || true
+
+      # Extend here: add Slack/Teams/email notification
+      # using ${{ steps.check.outputs.countries }}
+
